@@ -26,7 +26,7 @@ let defenseBatteries = [
     { name: "Aegis-İzmir", lat: 38.419, lon: 27.128 }
 ];
 
-// --- ULUSAL HAVA SAHASI ---
+// --- ULUSAL HAVA SAHASI (TÜM TÜRKİYE'Yİ KAPSAYACAK ŞEKİLDE BÜYÜTÜLDÜ) ---
 const nationalCenterLat = 39.0; 
 const nationalCenterLon = 35.2;
 const nationalRadius = 850000.0; 
@@ -36,11 +36,12 @@ viewer.camera.flyTo({
     duration: 2
 });
 
-// --- YENİ: PANEL KATLAMA (AÇ/KAPAT) ---
+// --- YENİ: PANEL KATLAMA (AÇ/KAPAT) YÖNÜ GÜNCELLENDİ ---
 document.getElementById('toggle-panel').addEventListener('click', function() {
     const panel = document.getElementById('ui-panel');
     panel.classList.toggle('collapsed');
-    this.innerText = panel.classList.contains('collapsed') ? "▶" : "◀";
+    // Panel sağda: Kapalıysa açmak için sola (◀), açıksa kapatmak için sağa (▶) bakmalı
+    this.innerText = panel.classList.contains('collapsed') ? "◀" : "▶";
 });
 
 // Arayüzdeki listeyi ve haritadaki çizimleri güncelleyen fonksiyon
@@ -72,14 +73,14 @@ function renderNetwork() {
             label: { text: battery.name, font: '10pt monospace', pixelOffset: new Cesium.Cartesian2(0, 15), fillColor: Cesium.Color.CYAN }
         });
         
-        // UI Listesine ekle (YENİ: Silme butonu ile)
+        // UI Listesine ekle (Silme butonu ile)
         const itemDiv = document.createElement('div');
         itemDiv.className = 'bat-item';
         itemDiv.innerHTML = `<span>📡 ${battery.name}</span> <button class="delete-bat" data-index="${index}">×</button>`;
         listDiv.appendChild(itemDiv);
     });
 
-    // YENİ: Silme butonlarına tıklama özelliği ekle
+    // Silme butonlarına tıklama özelliği ekle
     document.querySelectorAll('.delete-bat').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const idx = e.target.getAttribute('data-index');
@@ -92,13 +93,13 @@ function renderNetwork() {
 // Uygulama açıldığında ağı çiz
 renderNetwork();
 
-// --- YENİ BATARYA EKLEME BUTONU ---
+// --- BATARYA EKLEME BUTONU ---
 document.getElementById('add-bat-btn').addEventListener('click', () => {
     const name = document.getElementById('new-bat-name').value;
     const lat = parseFloat(document.getElementById('new-bat-lat').value);
     const lon = parseFloat(document.getElementById('new-bat-lon').value);
 
-    // YENİ: Aynı isimde batarya var mı kontrolü
+    // Aynı isimde batarya var mı kontrolü
     if (defenseBatteries.some(b => b.name === name)) {
         alert("Bu isimde bir batarya zaten mevcut!");
         return;
@@ -138,7 +139,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
     const maxHeight = 150000; 
 
     const threatPosProp = new Cesium.SampledPositionProperty();
-    const predictedPath = []; // YENİ: Öngörülen Rota Dizisi
+    const predictedPath = []; 
     
     let activeBattery = null;
     let interceptPoint = null;
@@ -155,7 +156,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
         const h = 4 * maxHeight * t * (1 - t);
         const point = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, h);
         
-        predictedPath.push(point); // YENİ: Rota çizimi için tüm noktaları kaydet
+        predictedPath.push(point); 
 
         // Füze vurulana kadar gerçek konumunu güncelle
         if (!interceptTime || i <= interceptSecond) {
@@ -195,7 +196,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
         }
     }
 
-    // YENİ: ÖNGÖRÜLEN HEDEF ROTASI (Kesik Kırmızı Çizgi)
+    // ÖNGÖRÜLEN HEDEF ROTASI (Kesik Kırmızı Çizgi)
     viewer.entities.add({
         name: "Öngörülen Rota",
         polyline: {
