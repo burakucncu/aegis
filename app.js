@@ -1,4 +1,5 @@
 // Cesium.Ion.defaultAccessToken = 'SENIN_TOKENIN';
+Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_TOKEN;
 
 const viewer = new Cesium.Viewer('cesiumContainer', {
     terrainProvider: async () => await Cesium.createWorldTerrainAsync(),

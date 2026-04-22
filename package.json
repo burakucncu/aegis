@@ -1,0 +1,24 @@
+{
+  "name": "aegis",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+  "dev": "vite",
+  "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/burakucncu/aegis.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/burakucncu/aegis/issues"
+  },
+  "homepage": "https://github.com/burakucncu/aegis#readme",
+  "description": "",
+  "devDependencies": {
+    "vite": "^8.0.9"
+  }
+}
