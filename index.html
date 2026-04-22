@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GökKalkan Simülasyonu</title>
+    <title>Aegis Simülasyonu</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.116/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.116/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css">
@@ -12,27 +12,38 @@
     <div id="cesiumContainer"></div>
     
     <div id="ui-panel">
-        <h2>🚀 Aegis </h2>
+        <h2>🛡️ Aegis Kontrol Merkezi</h2>
         
         <div class="input-group">
-            <h3>Savunma Sistemi (Hava Alanı)</h3>
+            <h3>Radar & Batarya Ekle</h3>
+            <label>Birlik Adı: <input type="text" id="new-bat-name" value="Aegis-Antalya" style="width: 100px; float: right;"></label>
+            <label style="clear: both;">Enlem: <input type="number" id="new-bat-lat" value="36.884" step="0.001"></label>
+            <label>Boylam: <input type="number" id="new-bat-lon" value="30.705" step="0.001"></label>
+            <button id="add-bat-btn" class="secondary-btn">Batarya Yerleştir</button>
+            
+            <div id="battery-list">
+                </div>
+        </div>
+
+        <div class="input-group">
+            <h3>Roketin Hedefi (Şehir/Tesis)</h3>
             <label>Enlem: <input type="number" id="def-lat" value="39.925" step="0.001"></label>
             <label>Boylam: <input type="number" id="def-lon" value="32.837" step="0.001"></label>
         </div>
 
         <div class="input-group">
             <h3>Fırlatma Noktası (Tehdit)</h3>
-            <label>Enlem: <input type="number" id="threat-lat" value="36.500" step="0.001"></label>
-            <label>Boylam: <input type="number" id="threat-lon" value="35.000" step="0.001"></label>
+            <label>Enlem: <input type="number" id="threat-lat" value="34.000" step="0.001"></label>
+            <label>Boylam: <input type="number" id="threat-lon" value="38.000" step="0.001"></label>
         </div>
 
-        <button id="start-btn">Simülasyonu Başlat</button>
+        <button id="start-btn">Saldırıyı Başlat</button>
 
         <div id="results" style="display: none;">
             <hr>
-            <h3>📊 Simülasyon Verileri</h3>
-            <p id="entry-info">Hava sahasına giriş: --:--</p>
-            <p id="intercept-info">İmha konumu: --, --</p>
+            <h3>📊 Taktik Veriler</h3>
+            <p id="entry-info">Sınıra Giriş: --:--</p>
+            <p id="intercept-info">İmha Konumu: --, --</p>
             <p id="status-msg" style="color: #ff4d4d; font-weight: bold;"></p>
         </div>
     </div>
