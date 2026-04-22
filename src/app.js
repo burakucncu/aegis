@@ -29,158 +29,188 @@ Cesium.ArcGisMapServerImageryProvider.fromUrl(
 ).then(provider => viewer.imageryLayers.addImageryProvider(provider))
  .catch(error => console.error("Harita yüklenemedi:", error));
 
+// --- AEGIS AĞI: STRATEJİK BATARYA KONUMLARI ---
+const defenseBatteries = [
+    { name: "Aegis-İstanbul", lat: 41.008, lon: 28.978 },
+    { name: "Aegis-Ankara", lat: 39.933, lon: 32.859 },
+    { name: "Aegis-Erzurum", lat: 39.904, lon: 41.267 },
+    { name: "Aegis-Hatay", lat: 36.202, lon: 36.160 },
+    { name: "Aegis-İzmir", lat: 38.419, lon: 27.128 }
+];
+
+const domeRadius = 250000.0; // Ağdaki her bataryanın 250 km radar/koruma çapı var
+
 // Başlangıç Kamerası
 viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(35.2433, 38.9637, 2500000.0),
+    destination: Cesium.Cartesian3.fromDegrees(35.2433, 38.9637, 3000000.0), // Tüm ağı görmek için biraz daha yüksekten bakıyoruz
     duration: 2
 });
 
-// --- AEGIS SİMÜLASYON MATEMATİĞİ VE ANİMASYONU ---
+// --- SİMÜLASYON BAŞLATMA ---
 document.getElementById('start-btn').addEventListener('click', () => {
-    const defLat = parseFloat(document.getElementById('def-lat').value);
-    const defLon = parseFloat(document.getElementById('def-lon').value);
+    // Sol panelden girilen verileri al (Savunma kısmı artık hedefi temsil ediyor)
+    const targetLat = parseFloat(document.getElementById('def-lat').value);
+    const targetLon = parseFloat(document.getElementById('def-lon').value);
     const threatLat = parseFloat(document.getElementById('threat-lat').value);
     const threatLon = parseFloat(document.getElementById('threat-lon').value);
 
-    // Yeni simülasyonda ekranı temizle
+    // Ekranı ve arayüzü temizle
     viewer.entities.removeAll();
     document.getElementById('results').style.display = 'block';
+    document.getElementById('entry-info').innerText = `Tespit: --:--`;
+    document.getElementById('intercept-info').innerText = `İmha Konumu: --, --`;
+    document.getElementById('status-msg').innerText = "RADAR: TEHDİT BEKLENİYOR...";
+    document.getElementById('status-msg').style.color = "#ffeb3b";
 
-    const domeRadius = 100000.0; // 100km Koruma Sahası
-    const defensePos = Cesium.Cartesian3.fromDegrees(defLon, defLat, 0);
+    const targetPos = Cesium.Cartesian3.fromDegrees(targetLon, targetLat, 0);
     const launchPos = Cesium.Cartesian3.fromDegrees(threatLon, threatLat, 0);
 
-    // 1. AEGIS Savunma Merkezi ve Koruma Kubbesi
-    viewer.entities.add({
-        position: defensePos,
-        point: { pixelSize: 10, color: Cesium.Color.CYAN },
-        ellipsoid: {
-            radii: new Cesium.Cartesian3(domeRadius, domeRadius, domeRadius),
-            maximumCone: Cesium.Math.PI_OVER_TWO,
-            material: Cesium.Color.CYAN.withAlpha(0.1),
-            outline: true, outlineColor: Cesium.Color.CYAN.withAlpha(0.3)
-        }
+    // 1. Tüm Aegis Bataryalarını ve Kubbelerini Haritaya Çiz
+    defenseBatteries.forEach(battery => {
+        const bPos = Cesium.Cartesian3.fromDegrees(battery.lon, battery.lat, 0);
+        viewer.entities.add({
+            name: battery.name,
+            position: bPos,
+            point: { pixelSize: 8, color: Cesium.Color.CYAN, outlineColor: Cesium.Color.WHITE, outlineWidth: 1 },
+            label: { text: battery.name, font: '10pt monospace', pixelOffset: new Cesium.Cartesian2(0, 15), fillColor: Cesium.Color.CYAN },
+            ellipsoid: {
+                radii: new Cesium.Cartesian3(domeRadius, domeRadius, domeRadius),
+                maximumCone: Cesium.Math.PI_OVER_TWO,
+                material: Cesium.Color.CYAN.withAlpha(0.08),
+                outline: true, outlineColor: Cesium.Color.CYAN.withAlpha(0.2)
+            }
+        });
     });
 
-    // 2. Zaman Çizelgesi Ayarları
-    const duration = 120; // Tehdidin toplam uçuş süresi (saniye)
+    // Zaman ve Süre Ayarları
+    const duration = 180; // Roketin hedefe uçuş süresi
     const startTime = viewer.clock.currentTime;
-    
-    // Kesişim (İmha) Anı Hesaplamaları
-    const interceptRatio = 0.85; // Tehdit yolun %85'indeyken imha edilecek
-    const interceptTime = Cesium.JulianDate.addSeconds(startTime, duration * interceptRatio, new Cesium.JulianDate());
-    
-    // Savunma füzesinin kalkış anı
-    const defenseLaunchTime = Cesium.JulianDate.addSeconds(startTime, duration * 0.60, new Cesium.JulianDate()); 
+    const maxHeight = 150000; // 150km tepe noktası
 
     const threatPosProp = new Cesium.SampledPositionProperty();
-    const defensePosProp = new Cesium.SampledPositionProperty();
-    const maxHeight = 150000; // 150km tepe noktası (Uzay sınırı)
+    let activeBattery = null;
     let interceptPoint = null;
+    let interceptTime = null;
+    let interceptSecond = 0;
 
-    // Arayüzü Sıfırla
-    document.getElementById('entry-info').innerText = `Hava sahasına giriş: --:--`;
-    document.getElementById('intercept-info').innerText = `İmha Konumu: --, --`;
-    document.getElementById('status-msg').innerText = "RADAR: TEHDİT İZLENİYOR...";
-    document.getElementById('status-msg').style.color = "#ffeb3b"; // Sarı uyarı
-
-    // --- TEHDİT ROKETİ YÖRÜNGESİ ---
-    for (let i = 0; i <= duration * interceptRatio; i += 1) {
+    // --- TEHDİT YÖRÜNGESİ VE YAKINLIK (PROXIMITY) KONTROLÜ ---
+    for (let i = 0; i <= duration; i++) {
         const time = Cesium.JulianDate.addSeconds(startTime, i, new Cesium.JulianDate());
         const t = i / duration; 
 
-        const currentPos = Cesium.Cartesian3.lerp(launchPos, defensePos, t, new Cesium.Cartesian3());
+        // Roketin parabolik konumunu hesapla
+        const currentPos = Cesium.Cartesian3.lerp(launchPos, targetPos, t, new Cesium.Cartesian3());
         const cartographic = Cesium.Cartographic.fromCartesian(currentPos);
-        
         const h = 4 * maxHeight * t * (1 - t);
         const point = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, h);
         
         threatPosProp.addSample(time, point);
 
-        // Son koordinatı kesişim (patlama) noktası olarak kaydet
-        if (i === Math.floor(duration * interceptRatio)) {
-            interceptPoint = point; 
+        // Sisteme henüz bir batarya kilitlenmediyse radar kontrolü yap
+        if (!activeBattery) {
+            defenseBatteries.forEach(battery => {
+                const bPos = Cesium.Cartesian3.fromDegrees(battery.lon, battery.lat, 0);
+                const distance = Cesium.Cartesian3.distance(point, bPos);
+                
+                // Eğer roket herhangi bir bataryanın menziline girdiyse!
+                if (distance < domeRadius) {
+                    activeBattery = battery;
+                    // Tespit edildikten 15 saniye sonra vurulacağını hesapla
+                    interceptSecond = i + 15; 
+                    interceptTime = Cesium.JulianDate.addSeconds(startTime, interceptSecond, new Cesium.JulianDate());
+                    
+                    // Arayüzü Güncelle
+                    document.getElementById('entry-info').innerText = `Tespit: T+ ${i} sn`;
+                    document.getElementById('status-msg').innerText = `AEGIS AĞI: ${battery.name.toUpperCase()} ATEŞLENDİ!`;
+                    document.getElementById('status-msg').style.color = "#ff4d4d";
+                }
+            });
         }
 
-        // Hava sahası giriş kontrolü ve arayüz güncellemesi
-        const dist = Cesium.Cartesian3.distance(point, defensePos);
-        if (dist < domeRadius && document.getElementById('entry-info').innerText.includes('--')) {
-            document.getElementById('entry-info').innerText = `Hava sahasına giriş: T+ ${i} sn`;
+        // Roketin vurulacağı saniyedeki koordinatını kaydet
+        if (activeBattery && i === interceptSecond) {
+            interceptPoint = point;
             document.getElementById('intercept-info').innerText = `İmha Koor: ${Cesium.Math.toDegrees(cartographic.latitude).toFixed(3)}, ${Cesium.Math.toDegrees(cartographic.longitude).toFixed(3)}`;
-            document.getElementById('status-msg').innerText = "AEGIS: ÖNLEYİCİ FÜZE ATEŞLENDİ!";
-            document.getElementById('status-msg').style.color = "#ff4d4d"; // Kırmızı alarm
         }
-    }
-
-    // --- AEGIS SAVUNMA FÜZESİ YÖRÜNGESİ ---
-    const defDuration = Cesium.JulianDate.secondsDifference(interceptTime, defenseLaunchTime);
-    defensePosProp.addSample(defenseLaunchTime, defensePos); // Fırlatma rampasından başla
-    
-    for(let i = 1; i <= defDuration; i++) {
-        const time = Cesium.JulianDate.addSeconds(defenseLaunchTime, i, new Cesium.JulianDate());
-        const t = i / defDuration;
         
-        const currentPos = Cesium.Cartesian3.lerp(defensePos, interceptPoint, t, new Cesium.Cartesian3());
-        const cartographic = Cesium.Cartographic.fromCartesian(currentPos);
-        
-        // Önleyici füze agresif ve direkt bir açıyla kalkar (daha düşük parabol)
-        const targetHeight = Cesium.Cartographic.fromCartesian(interceptPoint).height;
-        const h = 4 * 20000 * t * (1 - t) + (targetHeight * t); 
-        const point = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, h);
-        
-        defensePosProp.addSample(time, point);
+        // Roket vurulduysa yörüngeyi daha fazla çizmene gerek yok (Döngüden çık)
+        if (interceptTime && Cesium.JulianDate.compare(time, interceptTime) >= 0) {
+            break;
+        }
     }
 
     // --- OBJE ÇİZİMLERİ ---
 
-    // 1. Tehdit Füzesi (Kırmızı)
+    // Tehdit Füzesi (Kırmızı) - Sadece vurulana kadar görünür
     viewer.entities.add({
         position: threatPosProp,
         point: { pixelSize: 8, color: Cesium.Color.RED },
         path: { width: 3, material: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.2, color: Cesium.Color.ORANGE }) },
         availability: new Cesium.TimeIntervalCollection([new Cesium.TimeInterval({
             start: startTime,
-            stop: interceptTime // Patlama anında silinir
+            stop: interceptTime || Cesium.JulianDate.addSeconds(startTime, duration, new Cesium.JulianDate())
         })]) 
     });
 
-    // 2. Aegis Önleyici Füze (Yeşil/Mavi)
-    viewer.entities.add({
-        position: defensePosProp,
-        point: { pixelSize: 6, color: Cesium.Color.LIME },
-        path: { width: 2, material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.CYAN }) },
-        availability: new Cesium.TimeIntervalCollection([new Cesium.TimeInterval({
-            start: defenseLaunchTime,
-            stop: interceptTime // Patlama anında silinir
-        })])
-    });
+    // Eğer roket tespit edildiyse Savunma Füzesini ve Patlamayı Çiz
+    if (activeBattery && interceptPoint) {
+        const defensePosProp = new Cesium.SampledPositionProperty();
+        const bPos = Cesium.Cartesian3.fromDegrees(activeBattery.lon, activeBattery.lat, 0);
+        
+        // Önleyici füze tespit edildikten hemen sonra (örn 2 sn sonra) kalksın
+        const launchTime = Cesium.JulianDate.addSeconds(startTime, interceptSecond - 13, new Cesium.JulianDate());
+        const defFlightDuration = Cesium.JulianDate.secondsDifference(interceptTime, launchTime);
 
-    // 3. HAVADA PATLAMA EFEKTİ (Dinamik Genişleyen Küre)
-    viewer.entities.add({
-        position: interceptPoint,
-        point: {
-            // Zaman farkına (diff) göre boyutu saniyeler içinde hızla büyütür
-            pixelSize: new Cesium.CallbackProperty((time) => {
-                const diff = Cesium.JulianDate.secondsDifference(time, interceptTime);
-                if (diff >= 0 && diff < 2.5) { 
-                    return 20 + (diff * 100); // Küçük başlayıp devasa bir ateş topuna dönüşür
-                }
-                return 0; // Zamanı gelmeden önce veya bittikten sonra görünmez
-            }, false),
-            // Yine zamana göre şeffaflaşarak duman gibi dağılır
-            color: new Cesium.CallbackProperty((time) => {
-                const diff = Cesium.JulianDate.secondsDifference(time, interceptTime);
-                if (diff >= 0 && diff < 2.5) {
-                    return Cesium.Color.ORANGE.withAlpha(1.0 - (diff / 2.5)); 
-                }
-                return Cesium.Color.TRANSPARENT;
-            }, false),
-            outlineColor: Cesium.Color.RED,
-            outlineWidth: 2
+        // Önleyici füze yörüngesi
+        for(let j = 0; j <= defFlightDuration; j++) {
+            const time = Cesium.JulianDate.addSeconds(launchTime, j, new Cesium.JulianDate());
+            const t = j / defFlightDuration;
+            const currentPos = Cesium.Cartesian3.lerp(bPos, interceptPoint, t, new Cesium.Cartesian3());
+            
+            // Önleyici füze için daha düşük bir kavis
+            const cartographic = Cesium.Cartographic.fromCartesian(currentPos);
+            const targetHeight = Cesium.Cartographic.fromCartesian(interceptPoint).height;
+            const h = 4 * 30000 * t * (1 - t) + (targetHeight * t); 
+            const point = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, h);
+            
+            defensePosProp.addSample(time, point);
         }
-    });
 
-    // Simülasyonu başlat ve kamerayı sahneye odakla
+        // Önleyici Füze Objesi (Yeşil)
+        viewer.entities.add({
+            position: defensePosProp,
+            point: { pixelSize: 6, color: Cesium.Color.LIME },
+            path: { width: 2, material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.CYAN }) },
+            availability: new Cesium.TimeIntervalCollection([new Cesium.TimeInterval({
+                start: launchTime,
+                stop: interceptTime // Patlama anında silinir
+            })])
+        });
+
+        // HAVADA PATLAMA EFEKTİ (Dinamik Genişleyen Küre)
+        viewer.entities.add({
+            position: interceptPoint,
+            point: {
+                pixelSize: new Cesium.CallbackProperty((time) => {
+                    const diff = Cesium.JulianDate.secondsDifference(time, interceptTime);
+                    if (diff >= 0 && diff < 3.0) return 20 + (diff * 120); 
+                    return 0; 
+                }, false),
+                color: new Cesium.CallbackProperty((time) => {
+                    const diff = Cesium.JulianDate.secondsDifference(time, interceptTime);
+                    if (diff >= 0 && diff < 3.0) return Cesium.Color.ORANGE.withAlpha(1.0 - (diff / 3.0)); 
+                    return Cesium.Color.TRANSPARENT;
+                }, false),
+                outlineColor: Cesium.Color.RED,
+                outlineWidth: 2
+            }
+        });
+    } else {
+        document.getElementById('status-msg').innerText = "HATA: TEHDİT AĞI AŞTI!";
+        document.getElementById('status-msg').style.color = "red";
+    }
+
+    // Animasyonu başlat
     viewer.clock.currentTime = startTime; 
     viewer.flyTo(viewer.entities);
 });
