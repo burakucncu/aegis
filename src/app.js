@@ -26,14 +26,21 @@ let defenseBatteries = [
     { name: "Aegis-İzmir", lat: 38.419, lon: 27.128 }
 ];
 
-// --- ULUSAL HAVA SAHASI (TÜM TÜRKİYE'Yİ KAPSAYACAK ŞEKİLDE BÜYÜTÜLDÜ) ---
+// --- ULUSAL HAVA SAHASI ---
 const nationalCenterLat = 39.0; 
 const nationalCenterLon = 35.2;
-const nationalRadius = 850000.0; // 850 km yarıçap ile Edirne'den Hakkari'ye kapsama
+const nationalRadius = 850000.0; 
 
 viewer.camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(35.2, 39.0, 4000000.0),
     duration: 2
+});
+
+// --- YENİ: PANEL KATLAMA (AÇ/KAPAT) ---
+document.getElementById('toggle-panel').addEventListener('click', function() {
+    const panel = document.getElementById('ui-panel');
+    panel.classList.toggle('collapsed');
+    this.innerText = panel.classList.contains('collapsed') ? "▶" : "◀";
 });
 
 // Arayüzdeki listeyi ve haritadaki çizimleri güncelleyen fonksiyon
@@ -52,11 +59,11 @@ function renderNetwork() {
         }
     });
 
-    // 2. Tüm Bataryaları Çiz
+    // 2. Tüm Bataryaları Çiz ve Listele
     const listDiv = document.getElementById('battery-list');
-    listDiv.innerHTML = ""; // UI Listesini temizle
+    listDiv.innerHTML = ""; 
 
-    defenseBatteries.forEach(battery => {
+    defenseBatteries.forEach((battery, index) => {
         // Haritaya ekle
         viewer.entities.add({
             name: battery.name,
@@ -65,8 +72,20 @@ function renderNetwork() {
             label: { text: battery.name, font: '10pt monospace', pixelOffset: new Cesium.Cartesian2(0, 15), fillColor: Cesium.Color.CYAN }
         });
         
-        // UI Listesine ekle
-        listDiv.innerHTML += `<div>📡 ${battery.name} (${battery.lat.toFixed(2)}, ${battery.lon.toFixed(2)})</div>`;
+        // UI Listesine ekle (YENİ: Silme butonu ile)
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'bat-item';
+        itemDiv.innerHTML = `<span>📡 ${battery.name}</span> <button class="delete-bat" data-index="${index}">×</button>`;
+        listDiv.appendChild(itemDiv);
+    });
+
+    // YENİ: Silme butonlarına tıklama özelliği ekle
+    document.querySelectorAll('.delete-bat').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = e.target.getAttribute('data-index');
+            defenseBatteries.splice(idx, 1); // Diziden çıkar
+            renderNetwork(); // Haritayı ve listeyi yenile
+        });
     });
 }
 
@@ -79,11 +98,16 @@ document.getElementById('add-bat-btn').addEventListener('click', () => {
     const lat = parseFloat(document.getElementById('new-bat-lat').value);
     const lon = parseFloat(document.getElementById('new-bat-lon').value);
 
+    // YENİ: Aynı isimde batarya var mı kontrolü
+    if (defenseBatteries.some(b => b.name === name)) {
+        alert("Bu isimde bir batarya zaten mevcut!");
+        return;
+    }
+
     if(name && !isNaN(lat) && !isNaN(lon)) {
         defenseBatteries.push({ name: name, lat: lat, lon: lon });
-        renderNetwork(); // Haritayı ve UI'ı yenile
+        renderNetwork(); 
         
-        // Yeni bir örnek batarya önerisi yaz
         document.getElementById('new-bat-name').value = "Aegis-Yeni";
     } else {
         alert("Lütfen geçerli değerler girin!");
@@ -92,7 +116,6 @@ document.getElementById('add-bat-btn').addEventListener('click', () => {
 
 // --- SİMÜLASYON BAŞLATMA ---
 document.getElementById('start-btn').addEventListener('click', () => {
-    // Saldırı başladığında haritayı temizleyip kalkan/bataryaları yeniden çizeriz
     renderNetwork(); 
     
     document.getElementById('results').style.display = 'block';
@@ -115,6 +138,8 @@ document.getElementById('start-btn').addEventListener('click', () => {
     const maxHeight = 150000; 
 
     const threatPosProp = new Cesium.SampledPositionProperty();
+    const predictedPath = []; // YENİ: Öngörülen Rota Dizisi
+    
     let activeBattery = null;
     let interceptPoint = null;
     let interceptTime = null;
@@ -130,7 +155,12 @@ document.getElementById('start-btn').addEventListener('click', () => {
         const h = 4 * maxHeight * t * (1 - t);
         const point = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, h);
         
-        threatPosProp.addSample(time, point);
+        predictedPath.push(point); // YENİ: Rota çizimi için tüm noktaları kaydet
+
+        // Füze vurulana kadar gerçek konumunu güncelle
+        if (!interceptTime || i <= interceptSecond) {
+            threatPosProp.addSample(time, point);
+        }
 
         if (!activeBattery) {
             const distToNationalAirspace = Cesium.Cartesian3.distance(point, nationalCenterPos);
@@ -163,9 +193,17 @@ document.getElementById('start-btn').addEventListener('click', () => {
             interceptPoint = point;
             document.getElementById('intercept-info').innerText = `İmha Koor: ${Cesium.Math.toDegrees(cartographic.latitude).toFixed(3)}, ${Cesium.Math.toDegrees(cartographic.longitude).toFixed(3)}`;
         }
-        
-        if (interceptTime && Cesium.JulianDate.compare(time, interceptTime) >= 0) break;
     }
+
+    // YENİ: ÖNGÖRÜLEN HEDEF ROTASI (Kesik Kırmızı Çizgi)
+    viewer.entities.add({
+        name: "Öngörülen Rota",
+        polyline: {
+            positions: predictedPath,
+            width: 2,
+            material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.RED.withAlpha(0.3) })
+        }
+    });
 
     // TEHDİT FÜZESİ
     viewer.entities.add({

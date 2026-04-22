@@ -2,13 +2,32 @@ html, body, #cesiumContainer {
     width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* 1. ui-panel GÜNCELLENDİ: Kayma animasyonu ve ok tuşu için görünürlük eklendi */
 #ui-panel {
     position: absolute; top: 20px; left: 20px; background: rgba(20, 20, 20, 0.9);
     color: white; padding: 20px; border-radius: 12px; z-index: 10; width: 300px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
-    max-height: 90vh; overflow-y: auto; /* Panel uzarsa kaydırma çubuğu çıkar */
+    max-height: 90vh; 
+    overflow-y: visible; /* Oku panelin dışına taşıyabilmek için 'auto' yerine 'visible' yaptık */
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Pürüzsüz kayma animasyonu */
 }
 
+/* 2. YENİ: Ok tuşuna basıldığında panelin sola gizlenmesi */
+#ui-panel.collapsed {
+    transform: translateX(-340px); /* Paneli tamamen ekran dışına it */
+}
+
+/* 3. YENİ: Panelin sağından sarkan ok tuşunun tasarımı */
+#toggle-panel {
+    position: absolute; right: -30px; top: 20px; width: 30px; height: 50px;
+    background: rgba(20, 20, 20, 0.9); color: #00d4ff; border: 1px solid rgba(255,255,255,0.1);
+    border-left: none; border-radius: 0 8px 8px 0; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; font-size: 14px;
+    transition: background 0.3s;
+}
+#toggle-panel:hover { background: rgba(40, 40, 40, 0.9); }
+
+/* --- Eski tasarım kodların (Aynen korundu) --- */
 #ui-panel h2 { margin: 0 0 15px 0; font-size: 18px; text-align: center; color: #00d4ff; }
 
 .input-group { background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 8px; margin-bottom: 15px; }
@@ -36,6 +55,18 @@ input[type="number"], input[type="text"] {
     margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;
     max-height: 80px; overflow-y: auto; font-size: 11px; color: #00d4ff;
 }
+
+/* 4. YENİ: Listelenen bataryaların hizalaması ve silme (X) butonu tasarımı */
+.bat-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.05); padding: 5px 8px; margin-bottom: 4px;
+    border-radius: 4px;
+}
+.delete-bat {
+    background: none; border: none; color: #ff4d4d; cursor: pointer;
+    font-weight: bold; font-size: 16px; padding: 0 5px; transition: transform 0.2s;
+}
+.delete-bat:hover { color: #ff0000; transform: scale(1.2); }
 
 #results h3 { font-size: 14px; color: #ffeb3b; margin-bottom: 10px; }
 #results p { font-size: 12px; margin: 5px 0; color: #ddd; }

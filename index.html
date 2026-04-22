@@ -12,39 +12,39 @@
     <div id="cesiumContainer"></div>
     
     <div id="ui-panel">
-        <h2>🛡️ Aegis Kontrol Merkezi</h2>
+        <button id="toggle-panel">◀</button>
         
-        <div class="input-group">
-            <h3>Radar & Batarya Ekle</h3>
-            <label>Birlik Adı: <input type="text" id="new-bat-name" value="Aegis-Antalya" style="width: 100px; float: right;"></label>
-            <label style="clear: both;">Enlem: <input type="number" id="new-bat-lat" value="36.884" step="0.001"></label>
-            <label>Boylam: <input type="number" id="new-bat-lon" value="30.705" step="0.001"></label>
-            <button id="add-bat-btn" class="secondary-btn">Batarya Yerleştir</button>
+        <div id="panel-content">
+            <h2>🛡️ Aegis Kontrol Merkezi</h2>
             
-            <div id="battery-list">
-                </div>
-        </div>
+            <div class="input-group">
+                <h3>Radar & Batarya Ekle</h3>
+                <label>Birlik Adı: <input type="text" id="new-bat-name" value="Aegis-Antalya"></label>
+                <label style="clear: both;">Enlem: <input type="number" id="new-bat-lat" value="36.884" step="0.001"></label>
+                <label>Boylam: <input type="number" id="new-bat-lon" value="30.705" step="0.001"></label>
+                <button id="add-bat-btn" class="secondary-btn">Batarya Yerleştir</button>
+                
+                <div id="battery-list"></div>
+            </div>
 
-        <div class="input-group">
-            <h3>Roketin Hedefi (Şehir/Tesis)</h3>
-            <label>Enlem: <input type="number" id="def-lat" value="39.925" step="0.001"></label>
-            <label>Boylam: <input type="number" id="def-lon" value="32.837" step="0.001"></label>
-        </div>
+            <div class="input-group">
+                <h3>Hedef & Fırlatma</h3>
+                <label>Hedef Enlem: <input type="number" id="def-lat" value="39.925" step="0.001"></label>
+                <label>Hedef Boylam: <input type="number" id="def-lon" value="32.837" step="0.001"></label>
+                <hr style="border: 0.1px solid rgba(255,255,255,0.1); margin: 10px 0;">
+                <label>Tehdit Enlem: <input type="number" id="threat-lat" value="34.000" step="0.001"></label>
+                <label>Tehdit Boylam: <input type="number" id="threat-lon" value="38.000" step="0.001"></label>
+            </div>
 
-        <div class="input-group">
-            <h3>Fırlatma Noktası (Tehdit)</h3>
-            <label>Enlem: <input type="number" id="threat-lat" value="34.000" step="0.001"></label>
-            <label>Boylam: <input type="number" id="threat-lon" value="38.000" step="0.001"></label>
-        </div>
+            <button id="start-btn">Saldırıyı Başlat</button>
 
-        <button id="start-btn">Saldırıyı Başlat</button>
-
-        <div id="results" style="display: none;">
-            <hr>
-            <h3>📊 Taktik Veriler</h3>
-            <p id="entry-info">Sınıra Giriş: --:--</p>
-            <p id="intercept-info">İmha Konumu: --, --</p>
-            <p id="status-msg" style="color: #ff4d4d; font-weight: bold;"></p>
+            <div id="results" style="display: none;">
+                <hr>
+                <h3>📊 Taktik Veriler</h3>
+                <p id="entry-info">Sınıra Giriş: --:--</p>
+                <p id="intercept-info">İmha Konumu: --, --</p>
+                <p id="status-msg"></p>
+            </div>
         </div>
     </div>
 
