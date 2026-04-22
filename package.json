@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/package.json",
   "name": "aegis",
   "version": "1.0.0",
   "main": "app.js",
