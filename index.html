@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hava Savunma Simülasyonu</title>
+    <title>GökKalkan Simülasyonu</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.116/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.116/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -12,8 +12,29 @@
     <div id="cesiumContainer"></div>
     
     <div id="ui-panel">
-        <h2>Simülasyon Kontrolü</h2>
-        <p>Arayüz buraya gelecek...</p>
+        <h2>🚀 GökKalkan Kontrol</h2>
+        
+        <div class="input-group">
+            <h3>Savunma Sistemi (Hava Alanı)</h3>
+            <label>Enlem: <input type="number" id="def-lat" value="39.925" step="0.001"></label>
+            <label>Boylam: <input type="number" id="def-lon" value="32.837" step="0.001"></label>
+        </div>
+
+        <div class="input-group">
+            <h3>Fırlatma Noktası (Tehdit)</h3>
+            <label>Enlem: <input type="number" id="threat-lat" value="36.500" step="0.001"></label>
+            <label>Boylam: <input type="number" id="threat-lon" value="35.000" step="0.001"></label>
+        </div>
+
+        <button id="start-btn">Simülasyonu Başlat</button>
+
+        <div id="results" style="display: none;">
+            <hr>
+            <h3>📊 Simülasyon Verileri</h3>
+            <p id="entry-info">Hava sahasına giriş: --:--</p>
+            <p id="intercept-info">İmha konumu: --, --</p>
+            <p id="status-msg" style="color: #ff4d4d; font-weight: bold;"></p>
+        </div>
     </div>
 
     <script type="module" src="/app.js"></script>
